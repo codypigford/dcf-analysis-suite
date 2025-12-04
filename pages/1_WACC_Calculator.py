@@ -240,6 +240,15 @@ if calculate_button:
             wacc_lower_ci = w_E * cost_of_equity_lower_ci + w_D * cost_of_debt * (1 - marg_tax_rate)
             wacc_upper_ci = w_E * cost_of_equity_upper_ci + w_D * cost_of_debt * (1 - marg_tax_rate)
 
+            # Save WACC results to session state for Phase 3 DCF Model
+            st.session_state.wacc_results = {
+                'wacc_lower': wacc_lower_ci,
+                'wacc': wacc,
+                'wacc_upper': wacc_upper_ci,
+                'ticker': ticker_symbol,
+                'timestamp': pd.Timestamp.now()
+            }
+
             # Display main WACC
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -256,6 +265,9 @@ if calculate_button:
 
             st.subheader("WACC Summary")
             st.dataframe(wacc_summary.style.format("{:.2f}%"), use_container_width=True)
+
+            # Notification that WACC was saved
+            st.success(f"✅ WACC saved! You can now use these values in the DCF Model (Phase 3)")
 
             # Visualization
             fig, ax = plt.subplots(figsize=(10, 6))

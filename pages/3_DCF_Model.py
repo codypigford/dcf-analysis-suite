@@ -127,53 +127,48 @@ st.sidebar.divider()
 
 st.sidebar.header("Growth Assumptions")
 
-# Simple vs Advanced mode
-projection_mode = st.sidebar.radio("Projection Mode", ["Simple", "Advanced"])
+# Interpolation method
+interpolation_method = st.sidebar.radio("Interpolation Method", ["Linear", "Exponential"])
 
-if projection_mode == "Simple":
-    # Simple mode: single growth rate that declines
-    initial_growth = st.sidebar.number_input("Initial Revenue Growth (%)", min_value=0.0, max_value=50.0, value=15.0, step=1.0) / 100
-    final_growth = st.sidebar.number_input("Final Year Growth (%)", min_value=0.0, max_value=30.0, value=6.0, step=1.0) / 100
+# Revenue Growth
+st.sidebar.subheader("📈 Revenue Growth")
+initial_growth = st.sidebar.slider("Year 1 Growth (%)", min_value=0.0, max_value=50.0, value=15.0, step=0.5) / 100
+final_growth = st.sidebar.slider("Final Year Growth (%)", min_value=0.0, max_value=30.0, value=6.0, step=0.5) / 100
 
-    # Create declining growth pattern
+if interpolation_method == "Linear":
     growth_pattern = np.linspace(initial_growth, final_growth, num_years).tolist()
-
-    ebit_margin_const = st.sidebar.number_input("EBIT Margin (%)", min_value=0.0, max_value=100.0, value=46.0, step=1.0) / 100
-    ebit_margin_pattern = [ebit_margin_const] * num_years
-
-    initial_reinv = st.sidebar.number_input("Initial Reinvestment Rate (%)", min_value=0.0, max_value=100.0, value=40.0, step=1.0) / 100
-    final_reinv = st.sidebar.number_input("Final Reinvestment Rate (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0) / 100
-    reinv_rate_pattern = np.linspace(initial_reinv, final_reinv, num_years).tolist()
-
 else:
-    # Advanced mode: custom patterns
-    st.sidebar.info("📝 Enter comma-separated values for each year")
+    # Exponential decay from initial to final
+    decay_rate = np.log(final_growth / initial_growth) / (num_years - 1) if initial_growth > 0 else 0
+    growth_pattern = [initial_growth * np.exp(decay_rate * i) for i in range(num_years)]
 
-    growth_input = st.sidebar.text_area("Revenue Growth (%) per Year",
-                                         value="20,15,15,15,10,10,10,8,8,6"[:num_years*3])
-    ebit_input = st.sidebar.text_area("EBIT Margin (%) per Year",
-                                       value="46,46,46,46,46,46,46,46,46,46"[:num_years*3])
-    reinv_input = st.sidebar.text_area("Reinvestment Rate (%) per Year",
-                                        value="40,40,30,20,20,20,20,20,20,20"[:num_years*3])
+# EBIT Margin
+st.sidebar.subheader("💰 EBIT Margin")
+initial_ebit = st.sidebar.slider("Year 1 EBIT Margin (%)", min_value=0.0, max_value=100.0, value=46.0, step=0.5) / 100
+final_ebit = st.sidebar.slider("Final Year EBIT Margin (%)", min_value=0.0, max_value=100.0, value=46.0, step=0.5) / 100
 
-    try:
-        growth_pattern = [float(x.strip())/100 for x in growth_input.split(',')][:num_years]
-        ebit_margin_pattern = [float(x.strip())/100 for x in ebit_input.split(',')][:num_years]
-        reinv_rate_pattern = [float(x.strip())/100 for x in reinv_input.split(',')][:num_years]
+if interpolation_method == "Linear":
+    ebit_margin_pattern = np.linspace(initial_ebit, final_ebit, num_years).tolist()
+else:
+    if initial_ebit > 0 and final_ebit > 0:
+        decay_rate = np.log(final_ebit / initial_ebit) / (num_years - 1)
+        ebit_margin_pattern = [initial_ebit * np.exp(decay_rate * i) for i in range(num_years)]
+    else:
+        ebit_margin_pattern = np.linspace(initial_ebit, final_ebit, num_years).tolist()
 
-        # Pad with last value if needed
-        while len(growth_pattern) < num_years:
-            growth_pattern.append(growth_pattern[-1] if growth_pattern else 0.06)
-        while len(ebit_margin_pattern) < num_years:
-            ebit_margin_pattern.append(ebit_margin_pattern[-1] if ebit_margin_pattern else 0.46)
-        while len(reinv_rate_pattern) < num_years:
-            reinv_rate_pattern.append(reinv_rate_pattern[-1] if reinv_rate_pattern else 0.20)
+# Reinvestment Rate
+st.sidebar.subheader("🔄 Reinvestment Rate")
+initial_reinv = st.sidebar.slider("Year 1 Reinvestment (%)", min_value=0.0, max_value=100.0, value=40.0, step=0.5) / 100
+final_reinv = st.sidebar.slider("Final Year Reinvestment (%)", min_value=0.0, max_value=100.0, value=20.0, step=0.5) / 100
 
-    except Exception as e:
-        st.sidebar.error("Invalid input format. Using defaults.")
-        growth_pattern = [0.15] * num_years
-        ebit_margin_pattern = [0.46] * num_years
-        reinv_rate_pattern = [0.20] * num_years
+if interpolation_method == "Linear":
+    reinv_rate_pattern = np.linspace(initial_reinv, final_reinv, num_years).tolist()
+else:
+    if initial_reinv > 0 and final_reinv > 0:
+        decay_rate = np.log(final_reinv / initial_reinv) / (num_years - 1)
+        reinv_rate_pattern = [initial_reinv * np.exp(decay_rate * i) for i in range(num_years)]
+    else:
+        reinv_rate_pattern = np.linspace(initial_reinv, final_reinv, num_years).tolist()
 
 st.sidebar.divider()
 
@@ -183,17 +178,35 @@ terminal_growth = st.sidebar.number_input("Terminal Growth Rate (%)", min_value=
 
 # WACC input
 st.sidebar.subheader("WACC (Cost of Capital)")
-wacc_input_mode = st.sidebar.radio("WACC Input", ["Manual", "Use Phase 1 Estimates"])
+wacc_input_mode = st.sidebar.radio("WACC Input", ["Manual", "Use Phase 1 Results"])
 
 if wacc_input_mode == "Manual":
     wacc_lower = st.sidebar.number_input("WACC Lower (%)  ", min_value=0.0, max_value=30.0, value=7.96, step=0.1) / 100
     wacc = st.sidebar.number_input("WACC Estimate (%)", min_value=0.0, max_value=30.0, value=9.25, step=0.1) / 100
     wacc_upper = st.sidebar.number_input("WACC Upper (%)  ", min_value=0.0, max_value=30.0, value=10.54, step=0.1) / 100
 else:
-    st.sidebar.info("📊 Use WACC Calculator (Phase 1) to get these values")
-    wacc_lower = st.sidebar.number_input("WACC Lower (%)  ", min_value=0.0, max_value=30.0, value=7.96, step=0.1) / 100
-    wacc = st.sidebar.number_input("WACC Estimate (%)", min_value=0.0, max_value=30.0, value=9.25, step=0.1) / 100
-    wacc_upper = st.sidebar.number_input("WACC Upper (%)  ", min_value=0.0, max_value=30.0, value=10.54, step=0.1) / 100
+    # Check if WACC data exists in session state from Phase 1
+    if 'wacc_results' in st.session_state:
+        wacc_data = st.session_state.wacc_results
+        wacc_lower = wacc_data['wacc_lower']
+        wacc = wacc_data['wacc']
+        wacc_upper = wacc_data['wacc_upper']
+
+        st.sidebar.success(f"✅ Using Phase 1 WACC: {wacc:.2%}")
+        st.sidebar.caption(f"Range: {wacc_lower:.2%} - {wacc_upper:.2%}")
+
+        # Show values (read-only)
+        st.sidebar.metric("WACC Lower", f"{wacc_lower:.2%}")
+        st.sidebar.metric("WACC Estimate", f"{wacc:.2%}")
+        st.sidebar.metric("WACC Upper", f"{wacc_upper:.2%}")
+    else:
+        st.sidebar.warning("⚠️ No Phase 1 WACC data found")
+        st.sidebar.info("Go to WACC Calculator and run a calculation, then return here")
+
+        # Fall back to manual input
+        wacc_lower = st.sidebar.number_input("WACC Lower (%) ", min_value=0.0, max_value=30.0, value=7.96, step=0.1) / 100
+        wacc = st.sidebar.number_input("WACC Estimate (%)", min_value=0.0, max_value=30.0, value=9.25, step=0.1) / 100
+        wacc_upper = st.sidebar.number_input("WACC Upper (%) ", min_value=0.0, max_value=30.0, value=10.54, step=0.1) / 100
 
 st.sidebar.divider()
 
