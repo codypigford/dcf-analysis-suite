@@ -38,7 +38,9 @@ Complete DCF valuation with projected cash flows and share price estimation.
 
 ## 🎯 Live Demo
 
-Access the application at: `http://localhost:8501` after installation
+**Try it now:** https://dcf-analysis-suite-cvmouukkz8gmvh9jgrjz7u.streamlit.app/
+
+Or run locally at: `http://localhost:8501` after installation
 
 ## 📦 Installation
 
